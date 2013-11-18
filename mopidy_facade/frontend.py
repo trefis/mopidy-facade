@@ -60,6 +60,19 @@ class RequestHandler(SocketServer.StreamRequestHandler):
             answer  = ["ok", map(track_to_dict, results)]
         json.dump(answer, self.wfile)
 
+    def get_artist(self, query):
+        def in_artists(album, uri):
+            return filter(lambda x: x.uri == uri, album.artists)
+        if query["uri"]is None or query["name"] is None:
+            answer = ["error", "expected uri & album name"]
+        else:
+            results = self.server.core.library.search(artist=query["name"]).get()
+            results = map(lambda x: x.albums, results)
+            results = reduce(lambda x, y: x + y, results)
+            results = filter(lambda x: in_artists(x, query["uri"]), results)
+            answer  = ["ok", map(album_to_dict, results)]
+        json.dump(answer, self.wfile)
+
     def _queue(self, uri):
         tl_track = self.server.core.tracklist.filter(uri=uri).get()
         if tl_track == [] or tl_track is None:
@@ -102,6 +115,7 @@ class RequestHandler(SocketServer.StreamRequestHandler):
             'play': self.play,
             'queue': self.queue,
             'get_album': self.get_album,
+            'get_artist': self.get_artist,
         }
 
         self.data = self.rfile.readline()
